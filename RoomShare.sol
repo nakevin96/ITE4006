@@ -2,7 +2,45 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 contract RoomShare {
+  uint public roomId = 0;
+  struct Room{
+    uint id;
+    string name;
+    string location;
+    bool isActive;
+    uint price;
+    address owner;
+    bool[] isRented;
+  }
+  mapping(uint => Room) public roomId2room;
 
+  uint public rentId = 0;
+  struct Rent{
+    uint id;
+    uint rid;
+    uint checkInDate;
+    uint checkOutDate;
+    address renter;
+  }
+  mapping(address => Rent[]) public renter2rent;
+  mapping(uint => Rent[]) public roomId2rent;
+  
+
+  event NewRoom (
+    uint256 indexed roomId
+  );
+
+  event NewRent (
+    uint indexed roomId,
+    uint256 indexed rentId
+  );
+
+  event Transfer(
+    address sender,
+    address recipient,
+    uint amount
+  );
+  
   function getMyRents() external view returns(Rent[] memory) {
     /* 함수를 호출한 유저의 대여 목록을 가져온다. */
   }
