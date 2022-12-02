@@ -567,8 +567,16 @@ const _shareRoom = async (name, location, price) => {
   // 에러 발생시 call 또는 send 함수의 파라미터에 from, gas 필드 값을 제대로 넣었는지 확인한다. (e.g. {from: ..., gas: 3000000, ...})
   // 트랜잭션이 올바르게 발생하면 알림 팝업을 띄운다. (e.g. alert("등록"))
   // 화면을 업데이트 한다.
-  let contract = getRoomShareContract()
-  await contract.methods.shareRoom(name, location, price).send()
+  try {
+    let contract = getRoomShareContract()
+    await contract.methods.shareRoom(name, location, price).send({
+      from: user,
+      gas: 1000000,
+    })
+    alert('등록')
+  } catch (error) {
+    throw new Error(error)
+  }
 }
 
 const _getMyRents = async () => {
