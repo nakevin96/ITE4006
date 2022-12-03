@@ -409,7 +409,7 @@ const abi = [
   },
 ] // 대괄호까지 지우고 abi 복사 붙여넣기
 
-const contract_address = '0xc614ca00e9f344d115e16AC4d42c85C53da050A8' // 따옴표 안에 주소값 복사 붙여넣기
+const contract_address = '0xDF78035774c852eBd76BF192a992695a15537549' // 따옴표 안에 주소값 복사 붙여넣기
 
 const logIn = async () => {
   const ID = prompt('choose your ID')
@@ -581,6 +581,10 @@ const _shareRoom = async (name, location, price) => {
 
 const _getMyRents = async () => {
   // 내가 대여한 방 리스트를 불러온다.
+  let contract = getRoomShareContract()
+  const myRents = await contract.methods.getMyRents().call({
+    from: user,
+  })
   return myRents
 }
 
@@ -590,7 +594,7 @@ const displayMyRents = async () => {
   for (let i = 0; i < myRents.length; ++i) {
     html += '<tr>'
     html += '<td>' + myRents[i].id + '</td>'
-    html += '<td>' + myRents[i].rId + '</td>'
+    html += '<td>' + myRents[i].rid + '</td>'
     html +=
       '<td>' +
       dateFromDay(currentYear, myRents[i].checkInDate).toDateString() +
@@ -639,7 +643,10 @@ const listAllRooms = async () => {
   let html = "<option value=''>- Rooms Available -</option>"
   for (let i = 0; i < allRooms.length; ++i) {
     if (allRooms[i].isActive == false) continue
-    const jsonstr = JSON.stringify(allRooms[i]).replace(' ', '+')
+    const jsonstr = JSON.stringify({
+      id: allRooms[i].id,
+      price: allRooms[i].price,
+    })
     html += `<option value=${jsonstr}>`
     html += allRooms[i].id + ' | '
     html += allRooms[i].name + ' | '
@@ -663,12 +670,13 @@ const returnOptionsJSON = () => {
 const calculatePrice = (checkInDate, checkOutDate) => {
   const jsonobj = returnOptionsJSON()
   const price = Number(jsonobj.price)
-  const _price = (checkOutDate - checkInDate) * price
+  const _price = (checkOutDate - checkInDate + 1) * price
   return _price
 }
 
 const updateTotalPrice = (checkInDate, checkOutDate) => {
   const _price = calculatePrice(checkInDate, checkOutDate)
+  console.log(_price)
   const totalfeedom = document.getElementById('totalfee')
   totalfeedom.innerText = `${_price * mEthPrice} KRW`
 }
@@ -694,6 +702,32 @@ const _rentRoom = async (roomId, checkInDate, checkOutDate, price) => {
   // 단위는 finney = milli Eth (10^15)
   // Room ID에 해당하는 방이 체크인하려는 날짜에 대여되어서 대여되지 않는다면 _recommendDate 함수를 호출한다.
   // 화면을 업데이트 한다.
+  try {
+    let contract = getRoomShareContract()
+    await contract.methods.rentRoom(roomId, checkInDate, checkOutDate).send({
+      from: user,
+      gas: 1000000,
+      value: price * 10 ** 15,
+    })
+    alert('예약이 완료되었습니다')
+  } catch (error) {
+    if (
+      error.message ===
+      'Returned error: VM Exception while processing transaction: revert Room is not active'
+    ) {
+      throw new Error(error)
+    } else if (
+      error.message ===
+      'Returned error: VM Exception while processing transaction: revert Room is already Rented'
+    ) {
+      await _recommendDate(roomId, checkInDate, checkOutDate)
+    } else if (
+      error.message ===
+      'Returned error: VM Exception while processing transaction: revert Price is wrong'
+    ) {
+      alert('ether양이 맞지 않습니다')
+    }
+  }
 }
 
 const _recommendDate = async (roomId, checkInDate, checkOutDate) => {
@@ -701,6 +735,19 @@ const _recommendDate = async (roomId, checkInDate, checkOutDate) => {
   // 기존에 대여된 날짜가 언제부터 언제까지인지 알림 팝업으로 표시한다.
   // checkInDate <= 대여된 체크인 날짜 , 대여된 체크아웃 날짜 < checkOutDate
   // 주어진 헬퍼 함수 dateFromDay 를 이용한다.
+  let contract = getRoomShareContract()
+  let [rentedStart, rentedEnd] = await contract.methods
+    .recommendDate(roomId, checkInDate, checkOutDate)
+    .call()
+  let startDate = dateFromDay(currentYear, rentedStart)
+  let endDate = dateFromDay(currentYear, rentedEnd)
+  alert(
+    `${startDate.getFullYear()}년 ${
+      startDate.getMonth() + 1
+    }월 ${startDate.getDate()}일부터\n${endDate.getFullYear()}년 ${
+      endDate.getMonth() + 1
+    }월 ${endDate.getDate()}일까지 예약이 존재합니다.\n예약날짜를 변경해주세요`,
+  )
 }
 
 const getRoomRentHistory = async () => {
@@ -710,8 +757,23 @@ const getRoomRentHistory = async () => {
   const jsonobj = returnOptionsJSON()
   const roomId = jsonobj.id
   let contract = getRoomShareContract()
-  let history = await contract.methods.roomId2rent(roomId)
-  console.log(hisotry)
+  let history = []
+  let tmpHistory = await contract.methods.getRoomRentHistory(roomId).call()
+  tmpHistory.forEach(function (item) {
+    let tmpCheckIn = dateFromDay(currentYear, item.checkInDate)
+    let tmpCheckOut = dateFromDay(currentYear, item.checkOutDate)
+    history.push({
+      id: item.id,
+      rid: item.rid,
+      checkInDate: `${tmpCheckIn.getFullYear()}-${
+        tmpCheckIn.getMonth() + 1
+      }-${tmpCheckIn.getDate()}`,
+      checkOutDate: `${tmpCheckOut.getFullYear()}-${
+        tmpCheckOut.getMonth() + 1
+      }-${tmpCheckOut.getDate()}`,
+      renter: item.renter,
+    })
+  })
   return history
 }
 
