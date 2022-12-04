@@ -6,6 +6,32 @@ const currentYear = 2022
 
 const abi = [
   {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
+    ],
+    name: 'initializeRoomShare',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
+    ],
+    name: 'markRoomAsInactive',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
     anonymous: false,
     inputs: [
       {
@@ -36,6 +62,52 @@ const abi = [
     ],
     name: 'NewRoom',
     type: 'event',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'checkInDate',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'checkOutDate',
+        type: 'uint256',
+      },
+    ],
+    name: 'rentRoom',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'string',
+        name: 'name',
+        type: 'string',
+      },
+      {
+        internalType: 'string',
+        name: 'location',
+        type: 'string',
+      },
+      {
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+    ],
+    name: 'shareRoom',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
     anonymous: false,
@@ -181,23 +253,26 @@ const abi = [
         name: '_roomId',
         type: 'uint256',
       },
-    ],
-    name: 'initializeRoomShare',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
       {
         internalType: 'uint256',
-        name: '_roomId',
+        name: 'checkInDate',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'checkOutDate',
         type: 'uint256',
       },
     ],
-    name: 'markRoomAsInactive',
-    outputs: [],
-    stateMutability: 'nonpayable',
+    name: 'isAlreadyRented',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'view',
     type: 'function',
   },
   {
@@ -227,42 +302,6 @@ const abi = [
       },
     ],
     stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'rentId',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: '_roomId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'checkInDate',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'checkOutDate',
-        type: 'uint256',
-      },
-    ],
-    name: 'rentRoom',
-    outputs: [],
-    stateMutability: 'payable',
     type: 'function',
   },
   {
@@ -304,6 +343,19 @@ const abi = [
         internalType: 'address',
         name: 'renter',
         type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'rentId',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -410,32 +462,13 @@ const abi = [
     stateMutability: 'view',
     type: 'function',
   },
-  {
-    inputs: [
-      {
-        internalType: 'string',
-        name: 'name',
-        type: 'string',
-      },
-      {
-        internalType: 'string',
-        name: 'location',
-        type: 'string',
-      },
-      {
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-    ],
-    name: 'shareRoom',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
 ] // 대괄호까지 지우고 abi 복사 붙여넣기
 
-const contract_address = '0xeD66dA88e714A47dB59Ada9b5441a70d804d8dE6' // 따옴표 안에 주소값 복사 붙여넣기
+//for metamask
+const contract_address = '0xF98aFE8aD28f85b497C39215291E416fbc1159F9'
+
+//for ganache
+//const contract_address = '0xBD9748429AB4e69E6D6f893201FDd6F8163bA974' // 따옴표 안에 주소값 복사 붙여넣기
 
 const logIn = async () => {
   const ID = prompt('choose your ID')
@@ -445,7 +478,6 @@ const logIn = async () => {
 
   // 과제 제출 시 (metamask)
   web3 = await metamaskRequest()
-
   user = await getAccountInfos(Number(ID))
 
   await _updateUserAddress(user)
@@ -741,8 +773,14 @@ const _rentRoom = async (roomId, checkInDate, checkOutDate, price) => {
   // 단위는 finney = milli Eth (10^15)
   // Room ID에 해당하는 방이 체크인하려는 날짜에 대여되어서 대여되지 않는다면 _recommendDate 함수를 호출한다.
   // 화면을 업데이트 한다.
+  let selectedRoom = undefined
+  let isAlreadyRented = false
   try {
     let contract = getRoomShareContract()
+    selectedRoom = await contract.methods.roomId2room(roomId).call()
+    isAlreadyRented = await contract.methods
+      .isAlreadyRented(roomId, checkInDate, checkOutDate)
+      .call()
     await contract.methods.rentRoom(roomId, checkInDate, checkOutDate).send({
       from: user,
       gas: 1000000,
@@ -750,23 +788,15 @@ const _rentRoom = async (roomId, checkInDate, checkOutDate, price) => {
     })
     alert('예약이 완료되었습니다')
   } catch (error) {
-    if (
-      error.message ===
-      'Returned error: VM Exception while processing transaction: revert Room is not active'
-    ) {
-      alert('방이 비활성화 상태입니다.')
-      throw new Error(error)
-    } else if (
-      error.message ===
-      'Returned error: VM Exception while processing transaction: revert Room is already Rented'
-    ) {
-      await _recommendDate(roomId, checkInDate, checkOutDate)
-    } else if (
-      error.message ===
-      'Returned error: VM Exception while processing transaction: revert Price is wrong'
-    ) {
-      alert('ether양이 맞지 않습니다')
+    const correctPrice = (checkOutDate - checkInDate + 1) * selectedRoom.price
+    if (correctPrice !== price) {
+      alert('ether양이 잘못되었습니다.')
+    } else if (isAlreadyRented) {
+      _recommendDate(roomId, checkInDate, checkOutDate)
+    } else if (!selectedRoom.isActive) {
+      alert('비활성화된 방입니다.')
     }
+    throw new Error(error)
   }
 }
 
@@ -834,8 +864,12 @@ const displayRoomHistory = async () => {
 const markRoomAsInactive = async () => {
   // optional 1: 예약 비활성화
   // 소유한 방 중에서 선택한 방의 대여 가능 여부를 비활성화 한다.
+  let contract = getRoomShareContract()
+  let selectedRoom = undefined
+  if (roomIddom.value) {
+    selectedRoom = await contract.methods.roomId2room(roomIddom.value).call()
+  }
   try {
-    let contract = getRoomShareContract()
     if (roomIddom.value) {
       await contract.methods.markRoomAsInactive(roomIddom.value).send({
         from: user,
@@ -845,22 +879,22 @@ const markRoomAsInactive = async () => {
       alert('방이 비활성화되었습니다.')
     }
   } catch (error) {
-    console.log(error)
-    if (
-      error.message ===
-      'Returned error: VM Exception while processing transaction: revert Room is not yours'
-    ) {
+    if (selectedRoom.owner !== user) {
       alert('본인 소유 방에 대해서만 비활성화가 가능합니다.')
-      throw new Error(error)
     }
+    throw new Error(error)
   }
 }
 
 const intializeRoomShare = async () => {
   // optional 2: 대여 초기화
   // 소유한 방 중에서 선택한 방의 대여된 일정을 모두 초기화 한다.
+  let contract = getRoomShareContract()
+  let selectedRoom = undefined
+  if (roomIddom.value) {
+    selectedRoom = await contract.methods.roomId2room(roomIddom.value).call()
+  }
   try {
-    let contract = getRoomShareContract()
     if (roomIddom.value) {
       await contract.methods.initializeRoomShare(roomIddom.value).send({
         from: user,
@@ -871,13 +905,9 @@ const intializeRoomShare = async () => {
       alert('방의 대여 일정이 초기화 되었습니다.')
     }
   } catch (error) {
-    console.log(error.message)
-    if (
-      error.message ===
-      'Returned error: VM Exception while processing transaction: revert Room is not yours'
-    ) {
+    if (selectedRoom.owner !== user) {
       alert('본인 소유 방에 대해서만 초기화가 가능합니다.')
-      throw new Error(error)
     }
+    throw new Error(error)
   }
 }
