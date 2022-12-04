@@ -684,12 +684,10 @@ const _getAllRooms = async () => {
   let contract = getRoomShareContract()
   const rooms = []
   const limitRoomId = await contract.methods.getRoomId().call()
-  console.log(limitRoomId)
   for (let currRoomId = 0; currRoomId < parseInt(limitRoomId); currRoomId++) {
     let tmp = await contract.methods.roomId2room(currRoomId).call()
     rooms.push(tmp)
   }
-  console.log(rooms)
   return rooms
 }
 
