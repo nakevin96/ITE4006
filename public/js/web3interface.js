@@ -38,52 +38,6 @@ const abi = [
     type: 'event',
   },
   {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: '_roomId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'checkInDate',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'checkOutDate',
-        type: 'uint256',
-      },
-    ],
-    name: 'rentRoom',
-    outputs: [],
-    stateMutability: 'payable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'string',
-        name: 'name',
-        type: 'string',
-      },
-      {
-        internalType: 'string',
-        name: 'location',
-        type: 'string',
-      },
-      {
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-    ],
-    name: 'shareRoom',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -227,6 +181,32 @@ const abi = [
         name: '_roomId',
         type: 'uint256',
       },
+    ],
+    name: 'initializeRoomShare',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
+    ],
+    name: 'markRoomAsInactive',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
       {
         internalType: 'uint256',
         name: 'checkInDate',
@@ -247,6 +227,42 @@ const abi = [
       },
     ],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'rentId',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: '_roomId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'checkInDate',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'checkOutDate',
+        type: 'uint256',
+      },
+    ],
+    name: 'rentRoom',
+    outputs: [],
+    stateMutability: 'payable',
     type: 'function',
   },
   {
@@ -288,19 +304,6 @@ const abi = [
         internalType: 'address',
         name: 'renter',
         type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'rentId',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -407,18 +410,41 @@ const abi = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [
+      {
+        internalType: 'string',
+        name: 'name',
+        type: 'string',
+      },
+      {
+        internalType: 'string',
+        name: 'location',
+        type: 'string',
+      },
+      {
+        internalType: 'uint256',
+        name: 'price',
+        type: 'uint256',
+      },
+    ],
+    name: 'shareRoom',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ] // 대괄호까지 지우고 abi 복사 붙여넣기
 
-const contract_address = '0xDF78035774c852eBd76BF192a992695a15537549' // 따옴표 안에 주소값 복사 붙여넣기
+const contract_address = '0xeD66dA88e714A47dB59Ada9b5441a70d804d8dE6' // 따옴표 안에 주소값 복사 붙여넣기
 
 const logIn = async () => {
   const ID = prompt('choose your ID')
 
   // 개발 시 (ganache)
-  web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
+  //web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
 
   // 과제 제출 시 (metamask)
-  // web3 = await metamaskRequest();
+  web3 = await metamaskRequest()
 
   user = await getAccountInfos(Number(ID))
 
@@ -496,11 +522,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('logIn').addEventListener('click', logIn)
   document.getElementById('rentRoom').addEventListener('click', rentRoom)
   document.getElementById('shareRoom').addEventListener('click', shareRoom)
+  document
+    .getElementById('InActive')
+    .addEventListener('click', markRoomAsInactive)
+  document
+    .getElementById('ClearAll')
+    .addEventListener('click', intializeRoomShare)
 
   checkInDatedom = document.getElementById('checkInDate')
   checkOutDatedom = document.getElementById('checkOutDate')
   mEth2krwdom = document.getElementById('mEth2krw')
   pricedom = document.getElementById('price')
+  roomIddom = document.getElementById('roomId')
 
   checkInDatedom.addEventListener('input', () => {
     const datevalformatted = checkInDatedom.value.replace(
@@ -582,8 +615,14 @@ const _shareRoom = async (name, location, price) => {
 const _getMyRents = async () => {
   // 내가 대여한 방 리스트를 불러온다.
   let contract = getRoomShareContract()
-  const myRents = await contract.methods.getMyRents().call({
+  const myAllRents = await contract.methods.getMyRents().call({
     from: user,
+  })
+  const myRents = []
+  myAllRents.forEach((element) => {
+    if (element.renter !== '0x0000000000000000000000000000000000000000') {
+      myRents.push(element)
+    }
   })
   return myRents
 }
@@ -715,6 +754,7 @@ const _rentRoom = async (roomId, checkInDate, checkOutDate, price) => {
       error.message ===
       'Returned error: VM Exception while processing transaction: revert Room is not active'
     ) {
+      alert('방이 비활성화 상태입니다.')
       throw new Error(error)
     } else if (
       error.message ===
@@ -791,12 +831,53 @@ const displayRoomHistory = async () => {
   document.getElementById('roomHistory').innerHTML = html
 }
 
-const markRoomAsInactive = async (_roomId) => {
+const markRoomAsInactive = async () => {
   // optional 1: 예약 비활성화
   // 소유한 방 중에서 선택한 방의 대여 가능 여부를 비활성화 한다.
+  try {
+    let contract = getRoomShareContract()
+    if (roomIddom.value) {
+      await contract.methods.markRoomAsInactive(roomIddom.value).send({
+        from: user,
+        gas: 1000000,
+      })
+      _updateRooms()
+      alert('방이 비활성화되었습니다.')
+    }
+  } catch (error) {
+    console.log(error)
+    if (
+      error.message ===
+      'Returned error: VM Exception while processing transaction: revert Room is not yours'
+    ) {
+      alert('본인 소유 방에 대해서만 비활성화가 가능합니다.')
+      throw new Error(error)
+    }
+  }
 }
 
-const intializeRoomShare = async (_roomId) => {
+const intializeRoomShare = async () => {
   // optional 2: 대여 초기화
   // 소유한 방 중에서 선택한 방의 대여된 일정을 모두 초기화 한다.
+  try {
+    let contract = getRoomShareContract()
+    if (roomIddom.value) {
+      await contract.methods.initializeRoomShare(roomIddom.value).send({
+        from: user,
+        gas: 1000000,
+      })
+      _updateRooms()
+      _updateRents()
+      alert('방의 대여 일정이 초기화 되었습니다.')
+    }
+  } catch (error) {
+    console.log(error.message)
+    if (
+      error.message ===
+      'Returned error: VM Exception while processing transaction: revert Room is not yours'
+    ) {
+      alert('본인 소유 방에 대해서만 초기화가 가능합니다.')
+      throw new Error(error)
+    }
+  }
 }

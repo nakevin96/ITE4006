@@ -149,6 +149,33 @@ contract RoomShare {
     return tmpResult;
   }
 
-  // ...
+    // optional 1
+    // caution: 방의 소유자를 먼저 체크해야한다.
+  function markRoomAsInactive(uint256 _roomId) external{
+    Room storage selectedRoom = roomId2room[_roomId];
+    require(selectedRoom.owner == msg.sender, "Room is not yours");
+    selectedRoom.isActive = false;
+  }
+
+    // optional 2
+    // caution: 변수의 저장공간에 유의한다.
+  function initializeRoomShare(uint _roomId) external{
+    Room storage selectedRoom = roomId2room[_roomId];
+    require(selectedRoom.owner == msg.sender, "Room is not yours");
+    bool[365] memory newRoomRentedList;
+    selectedRoom.isRented = newRoomRentedList;
+
+    for(uint256 i=0; i<roomId2rent[_roomId].length; i++){
+      address tmpRenter = roomId2rent[_roomId][i].renter;
+      for(uint256 j=0; j<renter2rent[tmpRenter].length; j++){
+        if(renter2rent[tmpRenter][j].rid == _roomId){
+          delete renter2rent[tmpRenter][j];
+        }
+      }
+      
+    }
+
+    delete roomId2rent[_roomId];
+  }
 
 }
